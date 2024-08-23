@@ -425,6 +425,17 @@ ipcMain.handle("execute-command-with-logging", async (event, command) => {
       return [];
     }
 
+    // Check if the command is to get the app version
+    if (cmd.toLowerCase() === 'version') {
+      const version = app.getVersion();
+      const result = {
+        text: `App version: ${version}`,
+        type: 'output',
+      };
+      event.sender.send('log-output', result);
+      return [result];
+    }
+
     // Check if the command is a plugin command
     const pluginCommand = getPluginCommand(command);
     if (pluginCommand) {
