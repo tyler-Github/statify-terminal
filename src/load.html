@@ -138,5 +138,22 @@
         </h1>
       </div>
     </div>
+    <script>
+      window.api.receive('update-status', (status) => {
+        const originalText = document.getElementById('loading-text-original');
+        const innerText = document.getElementById('loading-text-inner');
+  
+        if (status.startsWith('Updating')) {
+          originalText.textContent = status;
+          innerText.textContent = ''; // Clear inner text for update progress
+        } else {
+          originalText.textContent = status;
+          innerText.textContent = ''; // Clear inner text
+        }
+      });
+  
+      // Initialize the update check status
+      window.api.send('get-update-status');
+    </script>
   </body>
 </html>
