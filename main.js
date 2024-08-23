@@ -2,6 +2,7 @@ const { app, net, BrowserWindow, ipcMain, screen } = require("electron");
 const path = require("path");
 const { spawn, exec } = require("child_process");
 const fs = require("fs");
+const { autoUpdater } = require("electron-updater");
 const notifier = require("node-notifier");
 const unzipper = require("unzipper");
 const os = require("os");
@@ -10,6 +11,9 @@ const {
   loadPlugins,
   getPluginCommand,
 } = require("./loadPlugins");
+
+autoUpdater.autoDownload = false
+autoUpdater.autoInstallOnAppQuit = false
 
 const RPC = require("discord-rpc");
 const { dir } = require("console");
@@ -169,45 +173,13 @@ function notifyUser(title, message) {
   });
 }
 
-// Check for updates
-function checkForUpdates() {
-  if (!shouldCheckForUpdates()) return;
-
-  const request = net.request(CHECK_UPDATE_URL);
-  request.on("response", (response) => {
-    let data = "";
-    response.on("data", (chunk) => {
-      data += chunk;
-    });
-    response.on("end", () => {
-      const releases = JSON.parse(data);
-      if (releases.length > 0) {
-        const latestRelease = releases[0];
-        const latestVersion = latestRelease.tag_name;
-
-        if (app.getVersion() !== latestVersion) {
-          notifyUser(
-            "Update Available",
-            `Version ${latestVersion} is available.`
-          );
-
-          // Automatically download the update
-          const zipDownloadLink = latestRelease.assets.links.find(
-            (link) => link.name === "Zip Download"
-          );
-
-          if (zipDownloadLink && zipDownloadLink.url) {
-            downloadUpdate(zipDownloadLink.url, latestVersion);
-          } else {
-            console.error("No valid download link found for the update.");
-          }
-        }
-      }
-      updateLastCheckTime(); // Update the last check time after a successful check
-    });
-  });
-  request.on("error", console.error);
-  request.end();
+// Function to check for updates
+async function checkForUpdates() {
+  try {
+    autoUpdater.checkForUpdatesAndNotify();
+  } catch (error) {
+    log.error("Error checking for updates:", error);
+  }
 }
 
 // Download update
@@ -574,8 +546,9 @@ app.whenReady().then(async () => {
     await initializeDataFiles(); // Wait for data files to initialize
     await checkForUpdates(); // Wait for updates check
     createSplashWindow(); // Create the splash window
-    ensureDirExists(documentsDir); // Ensure the directory exists
-    initializePluginsDir(documentsDir);
+    ensureDirExists(path.join(app.getPath("documents"), "MyApp")); // Ensure the directory exists
+    initializePluginsDir(path.join(app.getPath("documents"), "MyApp"));
+
     // Wait for the splash window to finish loading or other conditions
     splashWindow.webContents.on("did-finish-load", () => {
       setTimeout(() => {
@@ -583,6 +556,37 @@ app.whenReady().then(async () => {
         createWindow(); // Open the main window
         loadPlugins();
       }, 3000);
+    });
+
+    // Handle IPC messages
+    ipcMain.on("get-update-status", (event) => {
+      event.sender.send("update-status", autoUpdater.getStatus());
+    });
+
+    autoUpdater.on("update-available", () => {
+      splashWindow.webContents.send("update-status", "Checking for update...");
+    });
+
+    autoUpdater.on("download-progress", (progress) => {
+      const percent = Math.round(progress.percent);
+      splashWindow.webContents.send("update-status", `Updating ${percent}%`);
+    });
+
+    autoUpdater.on("update-downloaded", () => {
+      splashWindow.webContents.send(
+        "update-status",
+        "Update downloaded. Restarting..."
+      );
+      setTimeout(() => {
+        autoUpdater.quitAndInstall();
+      }, 3000); // Optional delay before quitting
+    });
+
+    autoUpdater.on("error", (error) => {
+      splashWindow.webContents.send(
+        "update-status",
+        "Error checking for updates."
+      );
     });
   } catch (error) {
     console.error("Error during app startup:", error);
