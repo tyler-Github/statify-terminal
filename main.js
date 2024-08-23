@@ -546,8 +546,8 @@ app.whenReady().then(async () => {
     await initializeDataFiles(); // Wait for data files to initialize
     await checkForUpdates(); // Wait for updates check
     createSplashWindow(); // Create the splash window
-    ensureDirExists(path.join(app.getPath("documents"), "MyApp")); // Ensure the directory exists
-    initializePluginsDir(path.join(app.getPath("documents"), "MyApp"));
+    ensureDirExists(path.join(app.getPath("documents"), "Statify-DB")); // Ensure the directory exists
+    initializePluginsDir(path.join(app.getPath("documents"), "Statify-DB"));
 
     // Wait for the splash window to finish loading or other conditions
     splashWindow.webContents.on("did-finish-load", () => {
