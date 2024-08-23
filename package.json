@@ -11,17 +11,22 @@
     "build-linux": "npm run build-css && electron-builder --linux",
     "dist": "npm run build-win && npm run build-mac && npm run build-linux"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tyler-Github/statify-terminal"
+  },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",
     "autoprefixer": "^10.4.20",
     "electron": "^25.9.8",
-    "postcss-cli": "^10.1.0",
     "electron-builder": "^25.8.0",
+    "postcss-cli": "^10.1.0",
     "tailwindcss": "^3.4.10"
   },
   "dependencies": {
     "discord-rpc": "^4.0.1",
     "fs": "^0.0.1-security",
+    "electron-updater": "^6.2.1",
     "logifys": "^1.0.36",
     "node-notifier": "^10.0.1",
     "os": "^0.1.2",
@@ -32,6 +37,13 @@
     "appId": "com.example.app",
     "productName": "Statify Terminal",
     "icon": "src/icon.png",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "tyler-Github",
+        "repo": "statify-terminal"
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "perMachine": true,
