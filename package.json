@@ -1,0 +1,89 @@
+{
+  "name": "statify-terminal",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build-css": "postcss src/styles/tailwind.css -o src/styles/output.css",
+    "build": "npm run build-css && electron-builder",
+    "build-win": "npm run build-css && electron-builder --win",
+    "build-mac": "npm run build-css && electron-builder --mac",
+    "build-linux": "npm run build-css && electron-builder --linux",
+    "dist": "npm run build-win && npm run build-mac && npm run build-linux"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "autoprefixer": "^10.4.20",
+    "electron": "^25.9.8",
+    "postcss-cli": "^10.1.0",
+    "electron-builder": "^25.8.0",
+    "tailwindcss": "^3.4.10"
+  },
+  "dependencies": {
+    "discord-rpc": "^4.0.1",
+    "fs": "^0.0.1-security",
+    "logifys": "^1.0.36",
+    "node-notifier": "^10.0.1",
+    "os": "^0.1.2",
+    "path": "^0.12.7",
+    "unzipper": "^0.12.3"
+  },
+  "build": {
+    "appId": "com.example.app",
+    "productName": "Statify Terminal",
+    "icon": "src/icon.png",
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "displayLanguageSelector": false,
+      "unicode": true,
+      "shortcutName": "Statify Terminal",
+      "warningsAsErrors": true,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "src/icon.icns",
+      "category": "public.app-category.developer-tools",
+      "extendInfo": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "statify-terminal"
+            ]
+          }
+        ]
+      }
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
+      "icon": "src/icon.png",
+      "category": "Utility",
+      "maintainer": "Your Name <you@example.com>",
+      "description": "A brief description of your application",
+      "synopsis": "A short synopsis of your application"
+    },
+    "directories": {
+      "buildResources": "build/resources",
+      "output": "dist"
+    }
+  }
+}
