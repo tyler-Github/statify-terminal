@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Custom Terminal</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/night-owl.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <style>
+      body {
+        background-color: #011627; /* Night Owl background color */
+        font-family: "Fira Code", monospace;
+        color: #d6deeb;
+        margin: 0;
+        border-radius: 50px !important;
+        border-top-left-radius: 10px !important; /* Rounded corners */
+        border-top-right-radius: 10px !important;
+        padding: 0;
+        height: 100vh;
+        overflow: hidden;
+        -webkit-app-region: drag; /* Make the entire body draggable */
+      }
+
+      #terminal-container {
+        -webkit-app-region: no-drag;
+        background-color: #011627;
+        padding: 20px;
+        width: 100vw; /* Full viewport width */
+        height: calc(
+          100vh - 60px
+        ); /* Adjust height to account for the fixed top bar (60px) */
+        overflow-y: auto; /* Enable vertical scrolling */
+        position: relative;
+        margin-top: 60px; /* Push down the terminal container below the fixed title bar */
+        transition: margin-top 0.5s ease, height 0.5s ease; /* Add transition effect */
+      }
+
+      #terminal-container.clear {
+        margin-top: 0 !important; /* Temporarily set margin-top to 0 */
+        height: 0 !important; /* Temporarily set height to 0 */
+      }
+
+      #terminal {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        margin: 0;
+        padding: 0;
+      }
+
+      #input-wrapper {
+        display: flex;
+        align-items: center;
+        margin-top: 10px;
+        position: relative;
+      }
+
+      #input {
+        background-color: #011627; /* Match terminal background */
+        color: #82aaff;
+        -webkit-app-region: no-drag;
+        border: none;
+        outline: none;
+        font-family: "Fira Code", monospace;
+        width: 100%;
+        resize: none;
+        margin: 0;
+        border-radius: 4px;
+        box-shadow: inset 0px 0px 5px rgba(0, 0, 0, 0.5); /* Shadow effect */
+        position: relative;
+        padding-right: 20px; /* Space for suggestions */
+        z-index: 1;
+      }
+
+      #input::placeholder {
+        color: #4c566a; /* Fade color for placeholder */
+        opacity: 1; /* Ensure full opacity */
+      }
+
+      #input-wrapper::before {
+        content: ">";
+        color: #82aaff;
+        margin-right: 10px; /* Space between prompt and input */
+      }
+
+      .suggestions {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* Make suggestions div non-interactive */
+        overflow: hidden;
+        color: #82aaff; /* Match suggestion text color */
+        white-space: pre-wrap;
+        display: flex;
+        align-items: center;
+        padding-left: 40px; /* Space for the prompt */
+      }
+
+      .suggestion-text {
+        background-color: rgba(
+          30,
+          42,
+          56,
+          0.7
+        ); /* Semi-transparent dark background */
+        padding: 0 4px;
+        border-radius: 4px;
+      }
+
+      pre {
+        margin: 0;
+        padding: 10px;
+        border-radius: 4px;
+      }
+
+      .output {
+        color: #7fdbca; /* Cyan for output */
+      }
+
+      .error {
+        color: #f07178; /* Red/pink for errors */
+      }
+
+      #terminal-container::-webkit-scrollbar {
+        width: 12px;
+      }
+
+      #terminal-container::-webkit-scrollbar-thumb {
+        background-color: #1e2a38;
+        border-radius: 10px;
+        border: 2px solid #011627;
+      }
+
+      #terminal-container::-webkit-scrollbar-track {
+        background: #011627;
+      }
+
+      #title-bar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        background-color: #01101c; /* Night Owl background color */
+        padding: 10px;
+        border-bottom: 1px solid #2c3e50; /* Border for separation */
+        border-top-left-radius: 10px; /* Rounded corners */
+        border-top-right-radius: 10px;
+        cursor: default;
+        position: fixed; /* Make the top bar fixed at the top */
+        top: 0; /* Position it at the very top */
+        width: 100%; /* Make it span the full width of the screen */
+        z-index: 10; /* Ensure it's above other elements */
+        -webkit-app-region: drag; /* Make the title bar draggable */
+      }
+
+      #window-controls {
+        display: flex;
+        align-items: center;
+      }
+
+      #window-controls button {
+        background: none;
+        -webkit-app-region: no-drag;
+        border: none;
+        color: #d6deeb; /* Text color */
+        font-size: 16px;
+        cursor: pointer;
+        margin-left: 12px; /* Spacing between buttons */
+        padding: 8px;
+        border-radius: 4px; /* Rounded corners for buttons */
+        transition: background-color 0.3s ease, color 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #window-controls button:hover {
+        background-color: #2c3e50; /* Background color on hover */
+        color: #82aaff; /* Text color on hover */
+      }
+
+      .fa {
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="title-bar">
+      <div id="window-controls">
+        <button id="minimize-button">
+          <i class="fa fa-window-minimize"></i>
+        </button>
+        <button id="fullscreen-button">
+          <i class="fa fa-window-maximize"></i>
+        </button>
+        <button id="close-button"><i class="fa fa-times"></i></button>
+      </div>
+    </div>
+    <div id="terminal-container">
+      <div id="terminal"></div>
+      <div id="input-wrapper">
+        <textarea
+          id="input"
+          rows="1"
+          autofocus
+          placeholder="Type a command..."
+        ></textarea>
+        <div id="suggestions" class="suggestions"></div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script>
+      const input = document.getElementById("input");
+      const terminal = document.getElementById("terminal");
+      const terminalContainer = document.getElementById("terminal-container");
+      const suggestionsContainer = document.getElementById("suggestions");
+
+      // List of predefined commands for autocompletion
+      const commands = [
+        "help",
+        "clear",
+        "echo",
+        "cd",
+        "ls",
+        "mkdir",
+        "rmdir",
+        "touch",
+        "rm",
+      ];
+
+      function appendToTerminal(text, type) {
+        const pre = document.createElement("pre");
+        pre.className = type;
+        pre.innerHTML = hljs.highlightAuto(text).value;
+        terminal.appendChild(pre);
+        terminalContainer.scrollTop = terminalContainer.scrollHeight; // Auto-scroll to the bottom
+      }
+
+      document
+        .getElementById("minimize-button")
+        .addEventListener("click", () => {
+          window.api.minimizeWindow();
+        });
+
+      document.getElementById("close-button").addEventListener("click", () => {
+        window.api.closeWindow();
+      });
+
+      document
+        .getElementById("fullscreen-button")
+        .addEventListener("click", () => {
+          window.api.toggleFullScreen();
+        });
+
+      function translateCommand(command) {
+        const [cmd, ...args] = command.split(" ");
+        const platform = window.api.getPlatform();
+
+        // Check platform and translate commands accordingly
+        if (platform === "win32") {
+          switch (cmd) {
+            case "ls":
+              return `dir ${args.join(" ")}`;
+            case "rm":
+              return `del ${args.join(" ")}`;
+            case "touch":
+              return `type nul > ${args[0]}`;
+            case "cd":
+              return `cd ${args.join(" ")}`;
+            default:
+              return command;
+          }
+        } else if (platform === "darwin" || platform === "linux") {
+          // macOS specific translations (if needed)
+          switch (cmd) {
+            case "dir":
+              return `ls ${args.join(" ")}`;
+            case "del":
+              return `rm ${args.join(" ")}`;
+            case "type nul >":
+              return `touch ${args[0]}`;
+            case "cd":
+              return `cd ${args.join(" ")}`;
+            default:
+              return command;
+          }
+        } else {
+          return command; // Default to original command for other platforms
+        }
+      }
+
+      async function executeCustomCommand(command) {
+        const [cmd, ...args] = command.split(" ");
+        switch (cmd) {
+          case "help":
+            appendToTerminal(
+              `Available commands:
+  - help: Show this help message
+  - clear: Clear the terminal
+  - echo [text]: Display the text
+  - cd [directory]: Change the current directory
+  - ls: List files in the current directory
+  - mkdir [directory]: Create a new directory
+  - rmdir [directory]: Remove a directory
+  - touch [file]: Create a new file
+  - rm [file]: Remove a file
+  - stato [file]: Open a text editor to edit the file
+  - statify --platform: Display the current platform (Windows, macOS, etc.)
+  `,
+              "output"
+            );
+            break;
+          case "statify":
+            if (args[0] === "--platform") {
+              const platform = window.api.getPlatform();
+              const platformName =
+                platform === "win32"
+                  ? "Windows"
+                  : platform === "darwin"
+                  ? "macOS"
+                  : "Unknown Platform";
+              appendToTerminal(`Current platform: ${platformName}`, "output");
+            } else {
+              appendToTerminal(
+                `Error: Invalid argument for statify command`,
+                "error"
+              );
+            }
+            break;
+          case "clear":
+            terminalContainer.classList.add("clear"); // Add the clear class
+
+            setTimeout(() => {
+              terminalContainer.classList.remove("clear"); // Remove the clear class after animation
+              document.getElementById("terminal").innerHTML = ""; // Clear the terminal content
+              appendToTerminal(
+                'Welcome to Statify Terminal\nType "help" for a list of commands.',
+                "prompt"
+              );
+            }, 500); // Match the transition duration to the timeout
+
+            break;
+          case "stato":
+            if (args.length === 0) {
+              appendToTerminal("Error: No filename specified", "error");
+            } else {
+              const filename = args.join(" ");
+              appendToTerminal(`Opening editor for ${filename}...`, "output");
+
+              // Request file content from the main process
+              const content = await window.api.readFileContent(filename);
+              openEditor(filename, content);
+            }
+            break;
+          case "cd":
+            if (args.length === 0) {
+              appendToTerminal("Error: No directory specified", "error");
+            } else {
+              // Try changing the directory
+              const fullCommand = `cd ${args.join(" ")}`;
+              const result = await window.api.executeCommandWithLogging(
+                fullCommand,
+                appendToTerminal
+              );
+
+              // Ensure result is defined and an array
+              if (
+                result &&
+                Array.isArray(result) &&
+                result.some((line) =>
+                  line.text.includes(
+                    "The system cannot find the path specified"
+                  )
+                )
+              ) {
+                appendToTerminal(
+                  `Error: Could not change directory to ${args.join(" ")}`,
+                  "error"
+                );
+              } else {
+                appendToTerminal(
+                  `Changed directory to ${args.join(" ")}`,
+                  "output"
+                );
+              }
+            }
+            break;
+          default:
+            return false; // Not a custom command
+        }
+        return true; // Handled as custom command
+      }
+
+      function updateSuggestions() {
+        const currentInput = input.value.trim();
+        const matchingCommands = commands.filter((cmd) =>
+          cmd.startsWith(currentInput)
+        );
+
+        // Clear previous suggestions
+        suggestionsContainer.innerHTML = "";
+
+        if (matchingCommands.length > 0 && currentInput.length > 0) {
+          suggestionsContainer.style.display = "flex"; // Show suggestions container
+
+          const suggestionText = matchingCommands[0].slice(currentInput.length);
+          suggestionsContainer.innerHTML = `<span class="suggestion-text">${suggestionText}</span>`;
+        } else {
+          suggestionsContainer.style.display = "none"; // Hide suggestions container if no matches
+        }
+      }
+
+      input.addEventListener("input", updateSuggestions);
+
+      input.addEventListener("keydown", async (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          let command = input.value.trim();
+          if (command) {
+            appendToTerminal(`> ${command}`, "prompt");
+            input.value = "";
+
+            if (!(await executeCustomCommand(command))) {
+              // Translate and execute command with real-time output
+              command = translateCommand(command);
+              await window.api.executeCommandWithLogging(
+                command,
+                appendToTerminal
+              );
+            }
+
+            // Keep the input always below the last output
+            terminalContainer.scrollTop = terminalContainer.scrollHeight;
+          }
+        }
+
+        if (event.key === "Tab") {
+          event.preventDefault();
+          const currentInput = input.value.trim();
+          const matchingCommands = commands.filter((cmd) =>
+            cmd.startsWith(currentInput)
+          );
+
+          if (matchingCommands.length === 1) {
+            input.value =
+              currentInput +
+              matchingCommands[0].slice(currentInput.length) +
+              " ";
+            updateSuggestions(); // Update the suggestions
+          } else if (matchingCommands.length > 1) {
+            appendToTerminal(`> ${currentInput}`, "prompt");
+            appendToTerminal(matchingCommands.join(" "), "output");
+          }
+        }
+      });
+
+      // Initial prompt
+      appendToTerminal(
+        'Welcome to Statify Terminal\nType "help" for a list of commands.',
+        "prompt"
+      );
+
+      // Load terminal history
+      window.api.loadTerminalHistory((history) => {
+        history.forEach(({ text, type }) => {
+          appendToTerminal(text, type);
+        });
+      });
+    </script>
+  </body>
+</html>

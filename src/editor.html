@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stato Editor</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/material.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <style>
+      body {
+        background-color: #011627;
+        font-family: "Fira Code", monospace;
+        color: #d6deeb;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        /* Make the entire body draggable */
+        -webkit-app-region: drag;
+      }
+
+      #editor-container {
+        /* Prevent dragging for the editor container and its children */
+        -webkit-app-region: no-drag;
+        flex-grow: 1;
+        padding: 20px;
+        overflow: hidden;
+        position: relative;
+        margin-top: 60px; /* Push down the terminal container below the fixed title bar */
+      }
+
+      .CodeMirror {
+        height: calc(100% - 40px);
+        border: none;
+      }
+
+      #command-bar {
+        background-color: #282c34;
+        color: #abb2bf;
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+        border-top: 1px solid #3c4048;
+        /* Prevent dragging on the command bar and its buttons */
+        -webkit-app-region: no-drag;
+      }
+
+      #command-bar button {
+        background-color: #4b4f5e;
+        border: none;
+        color: #abb2bf;
+        padding: 5px 10px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+        /* Prevent dragging on the command bar buttons */
+        -webkit-app-region: no-drag;
+      }
+
+      #command-bar button:hover {
+        background-color: #5c6370;
+      }
+
+      #title-bar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        background-color: #01101c; /* Night Owl background color */
+        padding: 10px;
+        border-bottom: 1px solid #2c3e50; /* Border for separation */
+        border-top-left-radius: 10px; /* Rounded corners */
+        border-top-right-radius: 10px;
+        cursor: default;
+        position: fixed; /* Make the top bar fixed at the top */
+        top: 0; /* Position it at the very top */
+        width: 100%; /* Make it span the full width of the screen */
+        z-index: 10; /* Ensure it's above other elements */
+        -webkit-app-region: drag; /* Make the title bar draggable */
+      }
+
+      #window-controls {
+        display: flex;
+        align-items: center;
+      }
+
+      #window-controls button {
+        background: none;
+        -webkit-app-region: no-drag;
+        border: none;
+        color: #d6deeb; /* Text color */
+        font-size: 16px;
+        cursor: pointer;
+        margin-left: 12px; /* Spacing between buttons */
+        padding: 8px;
+        border-radius: 4px; /* Rounded corners for buttons */
+        transition: background-color 0.3s ease, color 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #window-controls button:hover {
+        background-color: #2c3e50; /* Background color on hover */
+        color: #82aaff; /* Text color on hover */
+      }
+
+      .fa {
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="title-bar">
+      <div id="window-controls">
+        <h1>Stato Editor V1</h1>
+      </div>
+    </div>
+    <div id="editor-container">
+      <textarea id="editor"></textarea>
+      <div id="command-bar">
+        <span>Ctrl + S: Save</span>
+        <span>Ctrl + Q: Quit</span>
+        <button id="save-btn">Save</button>
+      </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/selection/active-line.min.js"></script>
+    <script>
+      let editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
+        mode: "javascript", // Default mode
+        theme: "material",
+        lineNumbers: true,
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        styleActiveLine: true,
+      });
+
+      let currentFilename = "";
+
+      // Load file content into editor
+      window.api.receive("load-file", (fileContent, filename) => {
+        currentFilename = filename;
+        setEditorMode(getFileExtension(filename));
+        editor.setValue(fileContent);
+      });
+
+      function setEditorMode(fileType) {
+        switch (fileType) {
+          case "js":
+            editor.setOption("mode", "javascript");
+            break;
+          case "py":
+            editor.setOption("mode", "python");
+            break;
+          case "xml":
+            editor.setOption("mode", "xml");
+            break;
+          case "html":
+            editor.setOption("mode", "html");
+            break;
+          default:
+            editor.setOption("mode", "text/plain");
+        }
+      }
+
+      function getFileExtension(filename) {
+        const extension = filename.split(".").pop();
+        return extension ? extension : "text";
+      }
+
+      // Save file content
+      function saveFile() {
+        if (!currentFilename) {
+          alert("No file is currently open");
+          return;
+        }
+
+        const fileContent = editor.getValue();
+        window.api
+          .send("save-file-content", currentFilename, fileContent)
+          .then((response) => {
+            if (response === true) {
+              alert("File saved successfully");
+            } else {
+              alert("Failed to save file");
+            }
+          })
+          .catch((error) => {
+            console.error("Save failed", error);
+            alert("Failed to save file");
+          });
+      }
+
+      // Close the editor window
+      function closeEditor() {
+        window.api
+          .send("close-editor")
+          .then(() => {
+            console.log("Editor window closed");
+          })
+          .catch((error) => {
+            console.error("Failed to close editor window", error);
+          });
+      }
+
+      // Attach save button and keyboard shortcuts
+      document.getElementById("save-btn").addEventListener("click", saveFile);
+
+      window.addEventListener("keydown", (event) => {
+        if (event.ctrlKey && event.key === "s") {
+          event.preventDefault(); // Prevent default browser save dialog
+          saveFile();
+        } else if (event.ctrlKey && event.key === "q") {
+          event.preventDefault(); // Prevent default behavior
+          closeEditor();
+        }
+      });
+    </script>
+  </body>
+</html>

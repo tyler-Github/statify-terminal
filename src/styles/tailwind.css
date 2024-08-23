@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: theme('colors.background');
+  color: theme('colors.foreground');
+  font-family: 'Courier New', monospace;
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+#terminal-container {
+  background-color: theme('colors.background');
+  border: 1px solid theme('colors.border');
+  border-radius: 15px;
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
+  width: 80%;
+  height: 80%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#terminal {
+  padding: 15px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Custom Scrollbar */
+#terminal::-webkit-scrollbar {
+  width: 8px;
+}
+
+#terminal::-webkit-scrollbar-track {
+  background: theme('colors.inputBackground');
+  border-radius: 10px;
+}
+
+#terminal::-webkit-scrollbar-thumb {
+  background-color: theme('colors.foreground'); /* Use foreground color */
+  border-radius: 10px;
+  border: 2px solid theme('colors.inputBackground');
+}
+
+#input {
+  background: theme('colors.inputBackground');
+  color: theme('colors.foreground');
+  border-top: 1px solid theme('colors.border');
+  padding: 10px;
+  font-size: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  border-bottom-left-radius: 15px;
+  border-bottom-right-radius: 15px;
+}
